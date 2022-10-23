@@ -5,7 +5,7 @@ import torch.optim as optim
 
 
 
-class torch_model(nn.Module):
+class PoseEstimation(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(8, 16, stride=1, padding='same')
@@ -16,7 +16,7 @@ class torch_model(nn.Module):
         self.batch_norm2 = nn.BatchNorm2d(512, momentum=0.95)
         self.drop2 = nn.Dropout2d(0.4)
         self.fc1 = nn.Linear(_, 512)
-        self.fc2 = nn.Linear(512, 75)
+        self.fc2 = nn.Linear(512, 42)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
