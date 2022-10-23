@@ -18,7 +18,7 @@ def set_frames_64(data):
     all_frames = np.empty((0, 64, 5))
 
     for i,frame in enumerate(np_frames):
-        frame = filter_x_y_z_axis(frame, [-1,1], [2.5, 5], [-1.2, 0.7])[:,1:]
+        frame = filter_x_y_z_axis(frame, [-2,2], [1, 10], [-1.6, 0.7])[:,1:]
         rows_count = frame.shape[0]
         if rows_count == 0:
             continue
@@ -40,6 +40,7 @@ def frame_to_np(frame):
 
 def run_preprocess(data_csv_file):
     df = pd.read_csv(data_csv_file)
+    import pdb;pdb.set_trace()
     data = set_frames_64(df)
     np_data = frame_to_np(data)
     return np_data
@@ -47,6 +48,6 @@ def run_preprocess(data_csv_file):
 
 # data = np.load(r"D:\multi_env\parking_1\csv_pc\split_removed_close_frames\elad_16.npy")
 
-final = run_preprocess(r"D:\multi_env\garden\csv_pc\Elad.csv")
-print(final.shape)
-np.save("MARS_Elad.npy", final)
+# final = run_preprocess(r"D:\multi_env\garden\csv_pc\Elad.csv")
+# print(final.shape)
+# np.save("MARS_Elad.npy", final)

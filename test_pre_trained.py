@@ -6,8 +6,8 @@ import tensorflow as tf
 
 
 
-# FRAME_ID = "Frame #"
-FRAME_ID = "frame_id"
+FRAME_ID = "Frame #"
+# FRAME_ID = "frame_id"
 
 def split_to_frames(data_set):
     gb = data_set.groupby(FRAME_ID)
@@ -28,9 +28,9 @@ def frame_to_np(frame):
 
 def filter_x_y_z_axis(data,  x_filter=[-np.inf, np.inf], y_filter=[-np.inf, np.inf], z_filter=[-np.inf, np.inf]):
         filtered_data = data.copy()        
-        filtered_data = filtered_data[(filtered_data[:,1] > x_filter[0]) & (filtered_data[:,1] < x_filter[1])]
-        filtered_data = filtered_data[(filtered_data[:,2] > y_filter[0]) & (filtered_data[:,2] < y_filter[1])]
-        filtered_data = filtered_data[(filtered_data[:,3] > z_filter[0]) & (filtered_data[:,3] < z_filter[1])]
+        filtered_data = filtered_data[(filtered_data[:,2] > x_filter[0]) & (filtered_data[:,2] < x_filter[1])]
+        filtered_data = filtered_data[(filtered_data[:,3] > y_filter[0]) & (filtered_data[:,3] < y_filter[1])]
+        filtered_data = filtered_data[(filtered_data[:,4] > z_filter[0]) & (filtered_data[:,4] < z_filter[1])]
         return filtered_data
 
 def visualize_results(mmwave_csv, pose_csv):
