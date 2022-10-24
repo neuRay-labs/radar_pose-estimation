@@ -56,3 +56,4 @@ def to_npy( jsons, valid_map):
                 i +=1 
     return data
 
+# np.save("nitzan_processed.npy",run_preprocess( r"C:\Users\NitzanKarby\Desktop\neuRay\experiment_data\Radar_data\pose_estimation\recordings\1\radar_18-10-2022_15-03-53_pc.csv")[0])

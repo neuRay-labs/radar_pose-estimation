@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import datetime
-from torch_model import PoseEstimation
+from pose_estimation_model import PoseEstimation
 from clearml.utilities.seed import make_deterministic
 import clearml
 import json
