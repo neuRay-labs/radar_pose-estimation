@@ -26,13 +26,11 @@ MODEL_SNAPSHOT_FILE_NAME_TEMPLATE = "model_snapshot_{epoch}.pth"
 
 class ModelTrainer():
     def __init__(self, args) -> None:
-        self.subset = args.subset
         self.clearml_task_name = args.clearml_task_name
-        self.pretrained_model_path = args.pretrained_model_path
-        self.train_path_radar = args.train_path_radar
-        self.train_path_label = args.train_path_label
-        self.test_path_radar = args.test_path_radar
-        self.test_path_label = args.test_path_label
+        self.train_path_radar = args.point_cloud_repo_train
+        self.train_path_label = args.pose_label_repo_train
+        self.test_path_radar = args.point_cloud_repo_test
+        self.test_path_label = args.pose_label_repo_test
         self.output_path = args.output_path
         self.no_validation = args.no_validation
         self.train_percentage = args.train_percentage
@@ -43,7 +41,8 @@ class ModelTrainer():
         self.no_clearml = args.no_clearml
         self.seed = args.seed
         self.cuda_device = torch.device('cuda') if torch.cuda.is_available() else torch.device("cpu")
-
+        self.test_dataset = None
+        self.train_dataset = None
         self.args = args
         print(vars(args))
 
@@ -60,9 +59,6 @@ class ModelTrainer():
         
         self.model = PoseEstimation().double()
         print(f'number of trainable parameters: {sum(p.numel() for p in self.model.parameters() if p.requires_grad)}')
-
-        if self.pretrained_model_path:
-            self.model.load_state_dict(torch.load(self.pretrained_model_path)) 
     
         self.model.to(self.cuda_device)
         
@@ -92,8 +88,8 @@ class ModelTrainer():
         }
         self.data_loaders = {}
         self.load_dataset()
-        self.data_loaders[TRAIN] = self.get_dataloader(self.datasets[TRAIN])
-        self.data_loaders[TEST] = self.get_dataloader(self.datasets[TEST])
+        self.data_loaders[TRAIN] = self.get_dataloader(self.train_dataset)
+        self.data_loaders[TEST] = self.get_dataloader(self.test_dataset)
         
         self.current_folder = os.path.join(self.output_path, f"{now.strftime('%Y-%m-%d_%H-%M-%S')}_{self.clearml_task_name}")
         os.makedirs(self.current_folder)
@@ -103,12 +99,12 @@ class ModelTrainer():
         if self.train_path_label:
             pose_data_set = data_set.PoseDataSet(body_points_path = self.train_path_label, pc_path=self.train_path_radar)
             if not self.test_path_radar:
-                train_size = int(self.train_percentage * len(pose_data_set))
+                train_size = int((self.train_percentage / 100) * len(pose_data_set))
                 test_size = len(pose_data_set) - train_size
-                self.datasets[TRAIN], self.datasets[TEST] = torch.utils.data.random_split(pose_data_set, [train_size, test_size])
+                self.train_dataset, self.test_dataset = torch.utils.data.random_split(pose_data_set, [train_size, test_size])
             else:
-                self.datasets[TRAIN] = pose_data_set
-                self.datasets[TEST] = data_set.PoseDataSet(body_points_path = self.test_path_label, pc_path=self.test_path_radar)
+                self.train_dataset = pose_data_set
+                self.test_dataset = data_set.PoseDataSet(body_points_path = self.test_path_label, pc_path=self.test_path_radar)
 
     def get_dataloader(self, database):
         return DataLoader(database, batch_size=self.batch_size, shuffle=True)
@@ -147,15 +143,12 @@ class ModelTrainer():
 
     def calculate_metrics(self):
         for dataset in self.datasets:
-            acc, loss, confusion = self.get_accuracy_and_loss(dataset)
-            self.metrics[dataset][ACCURACY] = acc
+            loss= self.get_accuracy_and_loss(dataset)
             self.metrics[dataset][LOSS] = loss
-            self.metrics[dataset][CONFUSION] = confusion
     
     def get_accuracy_and_loss(self, dataset):
         self.model.eval()
         with torch.no_grad():
-            total = 0
             running_loss = 0
             for data in self.data_loaders[dataset]:
                 inputs, labels = data['data'], data['label']
@@ -193,7 +186,7 @@ class ModelTrainer():
         torch.save(self.model.state_dict(), os.path.join(self.current_folder, MODEL_SNAPSHOT_FILE_NAME_TEMPLATE.format(epoch=self.epoch)))
     
     def test(self):
-        accuracy, loss, confusion = self.get_accuracy_and_loss(TEST)
+        accuracy, loss = self.get_accuracy_and_loss(TEST)
         if self.no_clearml:
             return
 

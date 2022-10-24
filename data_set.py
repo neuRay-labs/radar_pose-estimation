@@ -1,14 +1,11 @@
 import os
 import torch
-import pandas as pd
-import numpy as np
 import torch
 import json
 import glob
 import preprocessor
 from torch.utils.data import Dataset
 
-ANNOTATIONS_FILE_SIZE = 1000
 
 class PoseDataSet(Dataset):
     def __init__(self, body_points_path, pc_path) -> None:
@@ -30,8 +27,9 @@ class PoseDataSet(Dataset):
         self.all_subjects_body = {}
         self.all_subjects_pc = {}
         self.map = {}
-        self.extract_files(self.main_body_path, self.all_subjects_body, "json")
+        self.valid_frames = {}
         self.extract_files(self.main_pc_path, self.all_subjects_pc, "csv")
+        self.extract_files(self.main_body_path, self.all_subjects_body, "json")
         self.data_size = None
 
     def extract_files(self, path, dictionary, ext):
@@ -43,14 +41,20 @@ class PoseDataSet(Dataset):
             if ext == "csv" and len(dictionary[sub_name]) > 0:
                 for file in dictionary[sub_name]:
                     if not ".ts." in file:
-                        dictionary[sub_name] = preprocessor.run_preprocess(file)
+                        dictionary[sub_name], self.valid_frames[sub_name] = preprocessor.run_preprocess(file)
             if ext == 'json':
                 dictionary[sub_name] = [self.read_json(f) for f in dictionary[sub_name]]
-                dictionary[sub_name] = preprocessor.to_npy(dictionary[sub_name])
-                self.map[sub_name] = [self.map[sub_name-1],self.map[sub_name-1] + dictionary[sub_name].shape[0]]
-            if ext == 'npy':
-                dictionary[sub_name] = np.load(dictionary[sub_name][0])
-                self.map[sub_name] = [self.map[sub_name-1],self.map[sub_name-1] + dictionary[sub_name].shape[0]]
+                dictionary[sub_name] = preprocessor.to_npy(dictionary[sub_name], self.valid_frames[sub_name])
+                self.update_map(sub_name, dictionary)
+
+
+    def update_map(self, name, dictionary):
+        if self.map.keys():
+            self.map[name] = [self.map[str(int(name)-1)][1] + 1,self.map[str(int(name)-1)][1] + dictionary[name].shape[0] - 1]
+            return
+        else:
+            self.map[name] = [0, dictionary[name].shape[0] -1]
+            return
 
 
     def read_json(self, file):
@@ -68,8 +72,7 @@ class PoseDataSet(Dataset):
             return self.data_size
         sum = 0
         for subject in self.all_subjects_body.keys():
-            last_obj = self.all_subjects_body[subject][-1]
-            sum += max(last_obj.keys())
+            sum += len(self.all_subjects_body[subject])
         self.data_size = sum
         return sum
     
@@ -82,4 +85,3 @@ class PoseDataSet(Dataset):
                "label" : torch.tensor(self.all_subjects_body[subject][new_idx])}
 
             
-# a = PoseDataSet(r"C:\Users\NitzanKarby\Desktop\neuRay\experiment_data\Radar_data\pose_estimation\annotations", r"C:\Users\NitzanKarby\Desktop\neuRay\experiment_data\Radar_data\pose_estimation\recordings")
