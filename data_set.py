@@ -5,7 +5,6 @@ import json
 import glob
 import numpy as np
 import preprocessor
-from torch.utils.data import Dataset
 
 
 class PreparePoseDataSet():
@@ -70,8 +69,7 @@ class PreparePoseDataSet():
             label_train , label_test = self.all_subjects_body[:size,:], self.all_subjects_body[size:,:]
             np.save(os.path.join(output_path, "labelmap_train.npy"), label_train)
             np.save(os.path.join(output_path, "labelmap_test.npy"), label_test)
-        # featuremap_test , label_test = self.all_subjects_pc[size:,:], self.all_subjects_body[size:,:]
-        # assert featuremap_test.shape[0] == label_test.shape[0], ("numbers of rows for label and point cloud must match")
+
         print (f"Successfuly saves processed dataset to {output_path}")
 
 
