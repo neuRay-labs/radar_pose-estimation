@@ -3,12 +3,13 @@ import torch
 import torch
 import json
 import glob
+import numpy as np
 import preprocessor
 from torch.utils.data import Dataset
 
 
-class PoseDataSet(Dataset):
-    def __init__(self, body_points_path, pc_path) -> None:
+class PreparePoseDataSet():
+    def __init__(self, body_points_path, pc_path, trail) -> None:
         """
         the PoseDataSet is expecting to find files in the following hierarchy:
         body_poinst_path:
@@ -24,64 +25,57 @@ class PoseDataSet(Dataset):
         super().__init__()
         self.main_body_path = body_points_path
         self.main_pc_path = pc_path
-        self.all_subjects_body = {}
-        self.all_subjects_pc = {}
-        self.map = {}
+        self.all_subjects_pc = None
+        self.all_subjects_body = None
         self.valid_frames = {}
-        self.extract_files(self.main_pc_path, self.all_subjects_pc, "csv")
-        self.extract_files(self.main_body_path, self.all_subjects_body, "json")
+        self.trail = trail
+        self.extract_files(self.main_pc_path, "csv")
+        self.extract_files(self.main_body_path, "json")
         self.data_size = None
 
-    def extract_files(self, path, dictionary, ext):
+    def extract_files(self, path, ext):
         sub_folders = glob.glob(os.path.join(path,"*"))
         for folder in sub_folders:
             head_path, name = os.path.split(folder)
             sub_name = name.split("_")[0]
-            dictionary[sub_name] = glob.glob(os.path.join(folder,f"*.{ext}"))
-            if ext == "csv" and len(dictionary[sub_name]) > 0:
-                for file in dictionary[sub_name]:
-                    if not ".ts." in file:
-                        dictionary[sub_name], self.valid_frames[sub_name] = preprocessor.run_preprocess(file)
+            dataset_array = glob.glob(os.path.join(folder,f"*.{ext}"))
+            if ext == "csv" and len(dataset_array) > 0:
+                dataset_target = [d for d in dataset_array if ".ts" not in d][0]
+                if self.all_subjects_pc is None:
+                    self.all_subjects_pc, self.valid_frames[sub_name] = preprocessor.run_preprocess(dataset_target, self.trail)
+                else:
+                    new_dataset, self.valid_frames[sub_name] = preprocessor.run_preprocess(dataset_target, self.trail)
+                    self.all_subjects_pc = np.concatenate((self.all_subjects_pc, new_dataset), axis = 0)
             if ext == 'json':
-                dictionary[sub_name] = [self.read_json(f) for f in dictionary[sub_name]]
-                dictionary[sub_name] = preprocessor.to_npy(dictionary[sub_name], self.valid_frames[sub_name])
-                self.update_map(sub_name, dictionary)
-
-
-    def update_map(self, name, dictionary):
-        if self.map.keys():
-            self.map[name] = [self.map[str(int(name)-1)][1] + 1,self.map[str(int(name)-1)][1] + dictionary[name].shape[0] - 1]
-            return
-        else:
-            self.map[name] = [0, dictionary[name].shape[0] -1]
-            return
+                dataset_array = [self.read_json(f) for f in dataset_array]
+                if self.all_subjects_body is None:
+                    self.all_subjects_body = preprocessor.to_npy(dataset_array, self.valid_frames[sub_name])
+                else:
+                    new_dataset  = preprocessor.to_npy(dataset_array, self.valid_frames[sub_name])
+                    self.all_subjects_body = np.concatenate((self.all_subjects_body, new_dataset), axis = 0)
 
 
     def read_json(self, file):
         with open(file) as j_file:
             data = json.load(j_file)
         return data
-    
-    def find_subject(self, idx):
-        for s in self.map.keys():
-            if self.map[s][0] <= idx <= self.map[s][1]: 
-                return s
+
+    def save_data(self, train_percent, output_path):
+        size = (len(self.all_subjects_pc) * train_percent )//100
+        if self.all_subjects_pc is not None:
+            featuremap_train, featuremap_test = self.all_subjects_pc[:size,:], self.all_subjects_pc[size:,:]
+            np.save(os.path.join(output_path, "featuremap_train.npy"), featuremap_train)
+            np.save(os.path.join(output_path, "featuremap_test.npy"), featuremap_test)
+        if self.all_subjects_body is not None:
+            label_train , label_test = self.all_subjects_body[:size,:], self.all_subjects_body[size:,:]
+            np.save(os.path.join(output_path, "labelmap_train.npy"), label_train)
+            np.save(os.path.join(output_path, "labelmap_test.npy"), label_test)
+        # featuremap_test , label_test = self.all_subjects_pc[size:,:], self.all_subjects_body[size:,:]
+        # assert featuremap_test.shape[0] == label_test.shape[0], ("numbers of rows for label and point cloud must match")
+        print (f"Successfuly saves processed dataset to {output_path}")
+
 
     def __len__(self):
-        if self.data_size is not None:
-            return self.data_size
-        sum = 0
-        for subject in self.all_subjects_body.keys():
-            sum += len(self.all_subjects_body[subject])
-        self.data_size = sum
-        return sum
+        return len(self.all_subjects_body)
     
-    def __getitem__(self, idx) :
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
-        subject = self.find_subject(idx)
-        new_idx = idx - self.map[subject][0]
-        return {"data" : torch.tensor(self.all_subjects_pc[subject][new_idx]),
-               "label" : torch.tensor(self.all_subjects_body[subject][new_idx])}
-
-            
+    

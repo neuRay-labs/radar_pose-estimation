@@ -2,8 +2,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import numpy as np 
 import pandas as pd
-import tensorflow as tf
-
+from pose_estimation_model import PoseEstimation
+import torch
 
 
 FRAME_ID = "Frame #"
@@ -14,10 +14,9 @@ def split_to_frames(data_set):
     return [gb.get_group(x).to_numpy() for x in gb.groups]
 
 def pose_to_np(pose, feature_size):
-    # pose = pose.array
     x_array = pose[:feature_size].reshape((feature_size, 1))
     y_array = pose[feature_size:2*feature_size].reshape((feature_size, 1))
-    z_array = pose[2*feature_size:3*feature_size].reshape((feature_size, 1))
+    z_array = pose[2*feature_size:3*feature_size].reshape((feature_size, 1)) 
     return np.concatenate((x_array, y_array, z_array), axis=1)
     
 def frame_to_np(frame):
@@ -46,35 +45,35 @@ def show_plot(frames, pose, feature_size):
     fig = plt.figure(figsize=(8, 8))
     nice = Axes3D(fig)
     for f, p in zip(frames, pose):
-        p = pose_to_np(p, feature_size)
-        if len(f.shape) > 2:
-            f = frame_to_np(f)
-        else:
-            f = f[:,2:7]
-        fx, fy, fz = f[:,0].T, f[:,1].T, f[:,2].T
-        px, py, pz = p[:,0].T, p[:,1].T, p[:,2].T
-        # import pdb; pdb.set_trace()
-        nice.set_zlim3d(bottom=-3, top=0.5)
-        nice.set_ylim(bottom=-2, top=2)
-        nice.set_xlim(left=-2, right=2)
-        nice.set_xlabel('X Label')
-        nice.set_ylabel('Y Label')
-        nice.set_zlabel('Z Label')
-        nice.scatter(fx, fy, fz, color="red", marker='o')
-        nice.scatter(px, py, pz, color="blue", marker='o')
-        plt.pause(0.1)
-        nice.clear()
-        nice.grid(False)
+        if f.shape[0] != 0 and p.shape[0]!= 0:
+            p = pose_to_np(p, feature_size)
+            if len(f.shape) > 2:
+                f = frame_to_np(f)
+            else:
+                f = f[:,2:7]
+            fx, fy, fz = f[:,0].T, f[:,1].T, f[:,2].T
+            px, py, pz = p[:,0].T, p[:,1].T, p[:,2].T
+            nice.set_zlim3d(bottom=-1.6, top=1)
+            nice.set_ylim(bottom=0, top=12)
+            nice.set_xlim(left=-2, right=2)
+            nice.set_xlabel('X Label')
+            nice.set_ylabel('Y Label')
+            nice.set_zlabel('Z Label')
+            nice.scatter(fx, fy, fz, color="red", marker='o')
+            nice.scatter(px, py, pz, color="blue", marker='o')
+            plt.pause(0.1)
+            nice.clear()
+            nice.grid(False)
 
 
-def get_prediction(pre_trained_path, featuremap_test_path):
-    model = tf.keras.models.load_model(pre_trained_path)
-    featuremap_test = np.load(featuremap_test_path)
-    result_test = model.predict(featuremap_test)
-    return result_test, featuremap_test  
+def get_prediction(pre_trained_path, featuremap_test_path, feature_size):
+    featuremap_test = torch.tensor(np.load(featuremap_test_path)).double()
+    model = PoseEstimation(feature_size).double()
+    model.load_state_dict(torch.load(pre_trained_path))
+    model.eval()
+    result_test = model(featuremap_test)
+    print(result_test.shape)
+    return result_test.detach().numpy(), featuremap_test.detach().numpy()  
 
-
-if __name__ == "__main__":
-    # visualize_results(r"synced_data\woutlier\subject1\radar_data_all.csv", r"synced_data\woutlier\subject1\kinect_data_all.csv")
-    result_test, featuremap_test = get_prediction("model/MARS_test.h5", "MARS_Elad.npy")
-    show_plot(featuremap_test, result_test, 19)
+# import pdb;pdb.set_trace()
+# show_plot(np.load(r"E:\Radar\pose_estimation_rec\18_10\featuremap_train.npy"), np.load(r"E:\Radar\pose_estimation_rec\18_10\labelmap_train.npy"), 18)

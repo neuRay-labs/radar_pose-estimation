@@ -8,10 +8,9 @@ from pose_estimation_model import PoseEstimation
 from clearml.utilities.seed import make_deterministic
 import clearml
 import json
-import data_set
 from collections import defaultdict
 import random
-
+from Mars_dataset import PoseDataSetMars
 
 now = datetime.datetime.now()
 
@@ -27,6 +26,7 @@ MODEL_SNAPSHOT_FILE_NAME_TEMPLATE = "model_snapshot_{epoch}.pth"
 class ModelTrainer():
     def __init__(self, args) -> None:
         self.clearml_task_name = args.clearml_task_name
+        self.feature_size = args.feature_size
         self.train_path_radar = args.point_cloud_repo_train
         self.train_path_label = args.pose_label_repo_train
         self.test_path_radar = args.point_cloud_repo_test
@@ -46,18 +46,17 @@ class ModelTrainer():
         self.args = args
         print(vars(args))
 
-        if not self.no_clearml:
-            self.init_clearml()
+        # if not self.no_clearml:
+        #     self.init_clearml()
         self.datasets = []
-        if self.test_path_radar:
-            self.datasets.append(TEST)
+        
+        self.datasets.append(TEST)
 
         if self.train_path_label:
             self.datasets.append(TRAIN)
             if self.test_path_radar and not self.no_validation:
                 self.datasets.append(VALIDATION)
-        
-        self.model = PoseEstimation().double()
+        self.model = PoseEstimation(self.feature_size).double()
         print(f'number of trainable parameters: {sum(p.numel() for p in self.model.parameters() if p.requires_grad)}')
     
         self.model.to(self.cuda_device)
@@ -87,7 +86,7 @@ class ModelTrainer():
             },
         }
         self.data_loaders = {}
-        self.load_dataset()
+        self.load_dataset(PoseDataSetMars)
         self.data_loaders[TRAIN] = self.get_dataloader(self.train_dataset)
         self.data_loaders[TEST] = self.get_dataloader(self.test_dataset)
         
@@ -95,16 +94,16 @@ class ModelTrainer():
         os.makedirs(self.current_folder)
 
 
-    def load_dataset(self):
+    def load_dataset(self, dataLoader):
         if self.train_path_label:
-            pose_data_set = data_set.PoseDataSet(body_points_path = self.train_path_label, pc_path=self.train_path_radar)
+            pose_data_set = dataLoader(body_points_path = self.train_path_label, pc_path=self.train_path_radar)
             if not self.test_path_radar:
                 train_size = int((self.train_percentage / 100) * len(pose_data_set))
                 test_size = len(pose_data_set) - train_size
                 self.train_dataset, self.test_dataset = torch.utils.data.random_split(pose_data_set, [train_size, test_size])
             else:
                 self.train_dataset = pose_data_set
-                self.test_dataset = data_set.PoseDataSet(body_points_path = self.test_path_label, pc_path=self.test_path_radar)
+                self.test_dataset = dataLoader(body_points_path = self.test_path_label, pc_path=self.test_path_radar)
 
     def get_dataloader(self, database):
         return DataLoader(database, batch_size=self.batch_size, shuffle=True)
@@ -144,6 +143,8 @@ class ModelTrainer():
     def calculate_metrics(self):
         for dataset in self.datasets:
             loss= self.get_accuracy_and_loss(dataset)
+            if dataset == TEST:
+                print (f"CURRENT TEST LOSS: {loss}")
             self.metrics[dataset][LOSS] = loss
     
     def get_accuracy_and_loss(self, dataset):
@@ -155,6 +156,8 @@ class ModelTrainer():
                 inputs, labels = inputs.to(self.cuda_device), labels.to(self.cuda_device)
                 outputs = self.model(inputs)
                 running_loss += self.criterion(outputs, labels).cpu().item()
+            running_loss /= len(self.data_loaders[dataset])
+            print(f"data_set size: {len(self.data_loaders[dataset])}")
         self.model.train()
         return  running_loss 
     
@@ -224,7 +227,7 @@ class ModelTrainer():
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item()
-                if i % 10 == 9:
+                if i % 50 == 49:
                     print(f"[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 10:.5f}")
                     running_loss = 0
 

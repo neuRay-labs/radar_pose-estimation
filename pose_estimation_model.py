@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class PoseEstimation(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, feature_size) -> None:
         super().__init__()
         self.conv1 = nn.Conv2d(8, 16,kernel_size=3, stride=1, padding='same')
         self.conv2 = nn.Conv2d(16, 32,kernel_size=3, padding='same')
@@ -14,7 +14,7 @@ class PoseEstimation(nn.Module):
         self.batch_norm2 = nn.BatchNorm1d(512, momentum=0.95)
         self.drop2 = nn.Dropout2d(0.4)
         self.fc1 = nn.Linear(1280, 512) 
-        self.fc2 = nn.Linear(512, 42)
+        self.fc2 = nn.Linear(512, feature_size)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
