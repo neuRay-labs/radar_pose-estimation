@@ -58,6 +58,15 @@ def preprocess_data(args):
     dataset = PreparePoseDataSet(args.body_pose_path, args.pc_path, args.trail)
     dataset.save_data(args.train_percentage, args.output_path)
     
+# #preprocess bin pc file into csv
+# @subcommand([
+#     argument('--pc-path',required = True, help="Path to directory containing point cloud"),
+#     argument('--output-path',required = True, help="output path for the npy file. path must contain .csv extention"),
+# ])
+
+# def bin_to_csv(args):
+#     ti_pc = TIPointCloud(args.pc_path, args.output_path)
+#     ti_pc.save_csv()
 
 #visualize results
 @subcommand([

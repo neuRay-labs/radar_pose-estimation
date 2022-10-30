@@ -11,7 +11,7 @@ from tensorflow.keras.layers import Flatten
 from tensorflow.keras.layers import Conv2D
 from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.layers import Dropout
-
+from torch_model import PoseEstimation
 
 # set the directory
 import os

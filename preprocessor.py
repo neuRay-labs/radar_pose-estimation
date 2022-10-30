@@ -20,8 +20,8 @@ def set_frames_64(data, trail):
     old_frames = []
     all_valid_frames = set()
     for i,frame in enumerate(np_frames):
-        frame_id = frame[0][1]
-        frame = filter_x_y_z_axis(frame, [-2,2], [1, 10], [-1.6, 0.7])[:,2:]
+        frame_id = frame[0][0]
+        frame = filter_x_y_z_axis(frame, [-2,2], [0.5, 6], [-1.5, 0.8])[:,1:]
         if frame.shape[0] == 0:
             continue
         seen_frames.append(frame_id)
@@ -62,7 +62,7 @@ def pick_closesd_one(annotations):
     if len(annotations) == 1:
         return annotations[0]
     #get best one by x axis distance
-    return sorted(annotations, key = lambda x: np.average(np.array(x["pose3d"])[:,0]))[0]
+    return sorted(annotations, key = lambda x: np.abs(np.average(np.array(x["pose3d"])[:,0])))[0]
 
 def to_npy( jsons, valid_map):
     feature_size = 54
