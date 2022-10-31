@@ -1,4 +1,6 @@
 import os
+import matplotlib
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -10,6 +12,7 @@ import clearml
 import json
 from collections import defaultdict
 import random
+import numpy as np
 from Mars_dataset import PoseDataSetMars
 
 now = datetime.datetime.now()
@@ -44,6 +47,7 @@ class ModelTrainer():
         self.test_dataset = None
         self.train_dataset = None
         self.args = args
+        self.losses_report = {TRAIN: [], TEST:[], VALIDATION: []}
         print(vars(args))
 
         # if not self.no_clearml:
@@ -143,6 +147,7 @@ class ModelTrainer():
     def calculate_metrics(self):
         for dataset in self.datasets:
             loss= self.get_accuracy_and_loss(dataset)
+            self.losses_report[dataset].append(loss)
             if dataset == TEST:
                 print (f"CURRENT TEST LOSS: {loss}")
             self.metrics[dataset][LOSS] = loss
@@ -230,4 +235,11 @@ class ModelTrainer():
                 if i % 50 == 49:
                     print(f"[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 10:.5f}")
                     running_loss = 0
+        self.print_losses()
 
+    def print_losses(self):
+        for label in [TRAIN, TEST, VALIDATION]:
+            plt.plot(self.losses_report[label])
+            plt.title(label)
+            plt.show()
+        print(f"best model at index: {np.argmin(self.losses_report[TEST]) * self.metrics_report_interval} with result: {np.min(self.losses_report[TEST])}")

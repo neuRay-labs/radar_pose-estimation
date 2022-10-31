@@ -4,7 +4,7 @@ from preprocessor import run_preprocess
 import numpy as np
 from model_trainer import ModelTrainer
 from test_pre_trained import get_prediction, show_plot
-from data_set import PreparePoseDataSet
+from data_set_maker import PreparePoseDataSet
 
 parser = argparse.ArgumentParser(description='Neuray Radar Data Tool')
 subparsers = parser.add_subparsers(dest='subcommand')
@@ -33,7 +33,7 @@ def argument(*name_or_flags, **kwargs):
     argument("--no-validation", action='store_true'),
     argument("--no-clearml", action='store_true'),
     argument("--command-line", action='store_true'),
-    argument("--feature-size", default=54),
+    argument("--feature-size", default=18*3),
     argument("--train-percentage", default=80),
     argument("--batch-size", default=128),
     argument("--seed", default=1337),
@@ -51,22 +51,14 @@ def train(args):
     argument('--pc-path',required = True, help="Path to directory containing point cloud needed for Mars preprocessing"),
     argument('--train-percentage',default=80, type=int),
     argument('--trail',default=0, type=int),
+    argument('--feature-size',default=18, type=int),
     argument('--output-path',required = True, help="output path for the npy file. path must contain .npy extention"),
 ])
 
 def preprocess_data(args):
-    dataset = PreparePoseDataSet(args.body_pose_path, args.pc_path, args.trail)
+    dataset = PreparePoseDataSet(args.body_pose_path, args.pc_path, args.trail, args.feature_size)
     dataset.save_data(args.train_percentage, args.output_path)
     
-# #preprocess bin pc file into csv
-# @subcommand([
-#     argument('--pc-path',required = True, help="Path to directory containing point cloud"),
-#     argument('--output-path',required = True, help="output path for the npy file. path must contain .csv extention"),
-# ])
-
-# def bin_to_csv(args):
-#     ti_pc = TIPointCloud(args.pc_path, args.output_path)
-#     ti_pc.save_csv()
 
 #visualize results
 @subcommand([
