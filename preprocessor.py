@@ -23,16 +23,13 @@ def set_frames_64(data, trail):
     all_valid_frames = set()
     for i,frame in enumerate(np_frames):
         frame_id = frame[0][0]
-        frame = filter_x_y_z_axis(frame, [-1,2], [1, 6], [-1.5, 0.5])[:,1:] # configed for mindspace pufim room
+        frame = filter_x_y_z_axis(frame, [-2,2], [1, 7], [-1.5, 1])[:,1:] # configed for mindspace pufim room
         if frame.shape[0] == 0:
             continue
         seen_frames.append(frame_id)
         old_frames.append(frame)
         old_frames = old_frames[-trail:]
         if len(seen_frames) >= trail and valid_trail(seen_frames[-trail:], trail):
-            # if frame_id == 9961:
-            #     pdb.set_trace()
-            # frame = dbscan_filter_frame(frame)
             if len(frame) > 0:
                 frame = np.array(sorted(frame, key = functools.cmp_to_key(sort_xyz)))
                 if frame.shape[0] < 64:
@@ -78,36 +75,55 @@ def pick_closesd_one(annotations):
     cur_array = sorted(annotations, key = lambda x: np.nanmean(np.array(x["pose3d"])[:,0]), reverse= True)
     return cur_array[0]
 
-def make_row(pose_array, data):
+def index_value(pose, idx):
+    return np.array([pose[idx], pose[idx+8], pose[idx+16]])
+
+def replace_value(pose, idx, new_val):
+    pose[idx] = new_val[0]
+    pose[idx+8] = new_val[1]
+    pose[idx+16] = new_val[2]
+    return pose
+
+def complete_zero_points(pose, body_mean):
+    if np.array_equal(index_value(pose, 0), np.array([0,0,0])):
+        pose = replace_value(pose, 0, body_mean + np.array([0,0,0.34]))
+    return pose
+
+def make_row(pose_array, data, idx):
     x_axis = pose_array[:,0]
     y_axis = pose_array[:,1]
     z_axis = pose_array[:,2] * -1
     pose = np.concatenate((x_axis, y_axis, z_axis), axis = 0)
     nan_vals = np.argwhere(pd.isnull(pose))
-    pose[nan_vals] = data[-1][nan_vals]
+    pose[nan_vals] = data[idx-1][nan_vals]
+    body_mean = np.array([np.nanmean(x_axis), np.nanmean(y_axis), np.nanmean(z_axis)])
+    if not (np.array_equal(index_value(pose, 0), np.array([0,0,0]))):
+        pose = complete_zero_points(pose, body_mean)
+        print (index_value(pose, 0) - body_mean)
     return pose
 
 
 
-def to_npy( jsons, valid_map, feature_size = 14):
+def to_npy( jsons, valid_map, feature_size = 8):
     data = np.zeros((len(valid_map), feature_size * 3))
     labels = {}
     for f in jsons:
         labels.update(f)
     for i, index in enumerate(valid_map):
         key = str(int(index)+1)
-        frame_annotation = labels[key].copy()
-        if frame_annotation["annotations"] and frame_annotation["annotations"][0]["pose3d"]:
-            best_annotation = pick_closesd_one(frame_annotation["annotations"])
-            if i != 0 :
-                pose = make_row(np.array(best_annotation["pose3d"])[:feature_size], data)
-            else:
-                pose = np.nan_to_num(np.array(best_annotation["pose3d"])[:feature_size])
-                x_axis = pose[:,0]
-                y_axis = pose[:,1]
-                z_axis = pose[:,2] * -1
-                pose = np.concatenate((x_axis, y_axis, z_axis), axis = 0)
-            data[i] = pose
+        if key in labels.keys():
+            frame_annotation = labels[key].copy()
+            if frame_annotation["annotations"] and frame_annotation["annotations"][0]["pose3d"]:
+                best_annotation = pick_closesd_one(frame_annotation["annotations"])
+                if i != 0 :
+                    pose = make_row(np.array(best_annotation["pose3d"])[:feature_size], data, i)
+                else:
+                    pose = np.nan_to_num(np.array(best_annotation["pose3d"])[:feature_size])
+                    x_axis = pose[:,0]
+                    y_axis = pose[:,1]
+                    z_axis = pose[:,2] * -1
+                    pose = np.concatenate((x_axis, y_axis, z_axis), axis = 0)
+                data[i] = pose
         else:
             if i != 0:
                 data[i] = data[i-1]

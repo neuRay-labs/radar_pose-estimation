@@ -27,9 +27,9 @@ class PreparePoseDataSet():
         self.all_subjects_body = None
         self.valid_frames = {}
         self.trail = trail
+        self.feature_size = feature_size
         self.extract_files(self.main_pc_path, "csv")
         self.extract_files(self.main_body_path, "json")
-        self.feature_size = feature_size
         self.data_size = None
 
     def extract_files(self, path, ext):
@@ -50,6 +50,7 @@ class PreparePoseDataSet():
                 if self.all_subjects_body is None:
                     self.all_subjects_body = preprocessor.to_npy(dataset_array, self.valid_frames[sub_name])
                 else:
+                    # import pdb;pdb.set_trace()
                     new_dataset  = preprocessor.to_npy(dataset_array, self.valid_frames[sub_name], self.feature_size)
                     self.all_subjects_body = np.concatenate((self.all_subjects_body, new_dataset), axis = 0)
 

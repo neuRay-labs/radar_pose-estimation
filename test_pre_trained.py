@@ -7,17 +7,17 @@ from pose_estimation_model import PoseEstimation
 import torch
 
 
-FRAME_ID = "Frame #"
-# FRAME_ID = "frame_id"
+# FRAME_ID = "Frame #"
+FRAME_ID = "frame_id"
 
 def split_to_frames(data_set):
     gb = data_set.groupby(FRAME_ID)
     return [gb.get_group(x).to_numpy() for x in gb.groups]
 
 def pose_to_np(pose, feature_size):
-    x_array = pose[:feature_size].reshape((feature_size, 1))[:14]
-    y_array = pose[feature_size:2*feature_size].reshape((feature_size, 1))[:14]
-    z_array = pose[2*feature_size:3*feature_size].reshape((feature_size, 1))[:14]
+    x_array = pose[:feature_size].reshape((feature_size, 1))[:feature_size]
+    y_array = pose[feature_size:2*feature_size].reshape((feature_size, 1))[:feature_size]
+    z_array = pose[2*feature_size:3*feature_size].reshape((feature_size, 1))[:feature_size]
     return np.concatenate((x_array, y_array, z_array), axis=1)
     
 def frame_to_np(frame):
@@ -81,7 +81,7 @@ def get_prediction(pre_trained_path, featuremap_test_path, feature_size):
     model.load_state_dict(torch.load(pre_trained_path))
     model.eval()
     result_test = model(featuremap_test)
-    # result_test = np.load(r"E:\Radar\pose_estimation_rec\30_10\debug\labelmap_test.npy")
+    # result_test = np.load(r"E:\Radar\22_11\single_person\6_meter\labelmap_test.npy")
     print(result_test.shape)
     return result_test.detach().numpy()   , featuremap_test.detach().numpy() #
 
