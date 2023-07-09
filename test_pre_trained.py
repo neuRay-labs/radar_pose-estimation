@@ -81,7 +81,7 @@ def get_prediction(pre_trained_path, featuremap_test_path, feature_size):
     model.load_state_dict(torch.load(pre_trained_path))
     model.eval()
     result_test = model(featuremap_test)
-    # result_test = np.load(r"E:\Radar\22_11\single_person\6_meter\labelmap_test.npy")
+    # result_test = np.load(r"E:\Radar\22_11\single_person\config_2\out_2\labelmap_test.npy")
     print(result_test.shape)
     return result_test.detach().numpy()   , featuremap_test.detach().numpy() #
 

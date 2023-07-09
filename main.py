@@ -33,13 +33,13 @@ def argument(*name_or_flags, **kwargs):
     argument("--no-validation", action='store_true'),
     argument("--no-clearml", action='store_true'),
     argument("--command-line", action='store_true'),
-    argument("--feature-size", default=8*3),
+    argument("--feature-size", default=57),
     argument("--train-percentage", default=80),
     argument("--batch-size", default=128),
     argument("--seed", default=1337),
-    argument("--epochs", default=150),
+    argument("--epochs", default=150, type = int),
     argument("--metrics-report-interval", type=int, default=15, help="How many epochs between each metrics report to clearml"),
-    argument("--learning-rate", type=float, default = 0.001),
+    argument("--learning-rate", type=float, default = 0.0001),
 ])
 def train(args):
     trainer = ModelTrainer(args)
@@ -51,7 +51,7 @@ def train(args):
     argument('--pc-path',required = True, help="Path to directory containing point cloud needed for Mars preprocessing"),
     argument('--train-percentage',default=80, type=int),
     argument('--trail',default=0, type=int),
-    argument('--feature-size',default=8, type=int),
+    argument('--feature-size',default=14, type=int),
     argument('--output-path',required = True, help="output path for the npy file. path must contain .npy extention"),
 ])
 
@@ -64,7 +64,7 @@ def preprocess_data(args):
 @subcommand([
     argument('--freeze-model-path',required = True, help="check point of the model"),
     argument('--npy-test-file',required = True, help='npy file for visualizing the results. MAKE SURE ITS NOT TRAIN FILE'),
-    argument('--feature-size', type=int, default = 8*3)  
+    argument('--feature-size', type=int, default = 57)  
 ])
 
 def visualize_results(args):

@@ -23,14 +23,14 @@ def set_frames_64(data, trail):
     all_valid_frames = set()
     for i,frame in enumerate(np_frames):
         frame_id = frame[0][0]
-        frame = filter_x_y_z_axis(frame, [-2,2], [1, 7], [-1.5, 1])[:,1:] # configed for mindspace pufim room
-        if frame.shape[0] == 0:
+        frame = filter_x_y_z_axis(frame, [-2,2], [1, 10], [-1.5, 1])[:,1:] 
+        if frame.shape[0] < 15:
             continue
         seen_frames.append(frame_id)
         old_frames.append(frame)
         old_frames = old_frames[-trail:]
         if len(seen_frames) >= trail and valid_trail(seen_frames[-trail:], trail):
-            if len(frame) > 0:
+            if len(frame) > 10:
                 frame = np.array(sorted(frame, key = functools.cmp_to_key(sort_xyz)))
                 if frame.shape[0] < 64:
                     frame = np.concatenate((frame, np.zeros((64-frame.shape[0], frame.shape[1]))), axis= 0)
@@ -104,7 +104,7 @@ def make_row(pose_array, data, idx):
 
 
 
-def to_npy( jsons, valid_map, feature_size = 8):
+def to_npy( jsons, valid_map, feature_size = 14):
     data = np.zeros((len(valid_map), feature_size * 3))
     labels = {}
     for f in jsons:

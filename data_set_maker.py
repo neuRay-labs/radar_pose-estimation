@@ -50,7 +50,6 @@ class PreparePoseDataSet():
                 if self.all_subjects_body is None:
                     self.all_subjects_body = preprocessor.to_npy(dataset_array, self.valid_frames[sub_name])
                 else:
-                    # import pdb;pdb.set_trace()
                     new_dataset  = preprocessor.to_npy(dataset_array, self.valid_frames[sub_name], self.feature_size)
                     self.all_subjects_body = np.concatenate((self.all_subjects_body, new_dataset), axis = 0)
 
